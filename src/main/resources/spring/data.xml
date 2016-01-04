@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+			http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+			http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa.xsd
+			">
+
+	<jdbc:embedded-database id="dataSourceMasterEmbedded"
+		type="HSQL">
+		<jdbc:script location="classpath:db/create-table.sql" />
+		<jdbc:script location="classpath:db/insert-data-master.sql" />
+	</jdbc:embedded-database>
+	
+	<jdbc:embedded-database id="dataSourceSlaveEmbedded"
+		type="HSQL">
+		<jdbc:script location="classpath:db/create-table.sql" />
+		<jdbc:script location="classpath:db/insert-data-slave.sql" />
+	</jdbc:embedded-database>
+	
+	<bean id="dataSource" class="rwtest.routing.RoutingDataSource">
+        <property name="targetDataSources">
+            <map key-type="rwtest.routing.DbType">
+                <entry key="MASTER" value-ref="dataSourceMasterEmbedded"/>
+                <entry key="SLAVE" value-ref="dataSourceSlaveEmbedded"/>
+            </map>
+        </property>
+        <property name="defaultTargetDataSource" ref="dataSourceMasterEmbedded"/>
+    </bean>
+    
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<!-- define the SqlSessionFactory -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="typeAliasesPackage" value="rwtest.domain" />
+	</bean>
+
+	<!-- scan for mappers and let them be autowired -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="rwtest.mapper" />
+	</bean>
+</beans>
